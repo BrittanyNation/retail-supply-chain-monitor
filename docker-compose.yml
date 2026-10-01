@@ -1,0 +1,49 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hd-supply-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: homedepot_admin
+      POSTGRES_PASSWORD: hd_secure_pass_2026
+      POSTGRES_DB: supply_chain
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - hd-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hd-supply-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: "postgresql://homedepot_admin:hd_secure_pass_2026@db:5432/supply_chain"
+    depends_on:
+      - db
+    networks:
+      - hd-network
+
+  web:
+    image: nginx:1.25-alpine
+    container_name: hd-supply-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - api
+    networks:
+      - hd-network
+
+networks:
+  hd-network:
+    driver: bridge
